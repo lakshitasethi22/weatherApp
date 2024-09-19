@@ -1,0 +1,42 @@
+name: weather
+description: "A new Flutter project."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.5.3
+
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.2.2
+  geolocator: ^9.0.0
+  google_fonts: ^6.2.1
+  flutter_typeahead: ^5.2.0
+  cupertino_icons: ^1.0.8
+  shared_preferences: ^2.0.12
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_typeahead: ^5.2.0
+  flutter_launcher_icons: ^0.13.1
+  shared_preferences: ^2.0.12
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/ic_launcher.png"
+  adaptive_icon_foreground: "assets/images/ic_launcher.png"
+  adaptive_icon_background: "#ffffff"
+
+flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+#    - assets/images/sunny_background.jpg
+#    - assets/images/cloudy_background.jpg
+#    - assets/images/rainy_background.jpg
+#    - assets/images/snowy_background.jpg
+#    - assets/images/default_background.jpg
