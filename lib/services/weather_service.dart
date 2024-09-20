@@ -2,16 +2,16 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 class WeatherService {
-  final String apiKey = '79e2286e76824509a9e45052241809'; // Replace with your actual API key
+  final String apiKey = '79e2286e76824509a9e45052241809';
   final String baseUrl = 'https://api.weatherapi.com/v1';
 
   Future<List<String>> fetchCitySuggestions(String query) async {
-    // Replace with your actual API endpoint
+
     final response = await http.get(Uri.parse('https://countriesnow.space/api/v0.1/countries'));
 
     if (response.statusCode == 200) {
       final List<dynamic> data = json.decode(response.body);
-      return data.map((city) => city['name'].toString()).toList(); // Adjust based on your API response
+      return data.map((city) => city['name'].toString()).toList();
     } else {
       throw Exception('Failed to load cities');
     }

@@ -7,30 +7,34 @@ class WeatherBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    String imagePath;
+
+    switch (condition.toLowerCase()) {
+      case 'sunny':
+      case 'clear':
+        imagePath = 'assets/images/sunny.jpg'; // Add your sunny image path
+        break;
+      case 'rain':
+      case 'drizzle':
+        imagePath = 'assets/images/rainy.jpg'; // Add your rainy image path
+        break;
+      case 'cloudy':
+        imagePath = 'assets/images/cloudy.jpg'; // Add your cloudy image path
+        break;
+      case 'snow':
+        imagePath = 'assets/images/snowy.jpg'; // Add your snowy image path
+        break;
+      default:
+        imagePath = 'assets/images/default.jpg'; // Default background
+    }
+
     return Container(
       decoration: BoxDecoration(
         image: DecorationImage(
-          image: AssetImage(_getBackgroundImage(condition)),
+          image: AssetImage(imagePath),
           fit: BoxFit.cover,
         ),
       ),
     );
-  }
-
-  String _getBackgroundImage(String condition) {
-    switch (condition.toLowerCase()) {
-      case 'sunny':
-        return 'assets/images/sunny_background.jpg';
-      case 'cloudy':
-        return 'assets/images/cloudy_background.jpg';
-      case 'rain':
-      case 'rainy':
-        return 'assets/images/rainy_background.jpg';
-      case 'snow':
-      case 'snowy':
-        return 'assets/images/snowy_background.jpg';
-      default:
-        return 'assets/images/default_background.jpg';
-    }
   }
 }

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:weather/services/weather_service.dart';
-import 'package:google_fonts/google_fonts.dart';
+// import 'package:google_fonts/google_fonts.dart';
 
 class ForecastScreen extends StatelessWidget {
   final String city;

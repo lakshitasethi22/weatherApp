@@ -40,3 +40,7 @@ flutter:
 #    - assets/images/rainy_background.jpg
 #    - assets/images/snowy_background.jpg
 #    - assets/images/default_background.jpg
+
+
+
+#two for loops for fetching the cities from the countries api

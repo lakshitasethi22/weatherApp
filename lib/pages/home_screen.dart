@@ -3,10 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:weather/services/weather_service.dart';
-import 'package:weather/services/weather_background.dart';
 import 'package:weather/pages/saved_locations_screen.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-
+import 'package:weather/services/weather_background.dart';
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -24,15 +22,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _loadSavedLocations();
     _getCurrentLocation();
-  }
-
-  Future<void> _loadSavedLocations() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _savedLocations = prefs.getStringList('savedLocations') ?? [];
-    });
   }
 
   Future<void> _getCurrentLocation() async {
@@ -69,8 +59,8 @@ class _HomeScreenState extends State<HomeScreen> {
         _currentWeather = weatherData;
         _city = weatherData['location']['name'] ?? 'Unknown';
       });
-      await _fetchWeather();
     } catch (e) {
+      print('Error fetching location: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Could not fetch location. Please try again later.')),
       );
@@ -81,142 +71,18 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final weatherData = await _weatherService.fetchCurrentWeather(_city);
       final forecastData = await _weatherService.fetchForecast(_city);
-      final hourlyData = await _weatherService.fetchHourlyForecast(_city);
-
-      // Debugging output
-      print('Weather Data: $weatherData');
+      final hourlyData = await _weatherService.fetchHourlyForecast(_city); // Fetch hourly data
 
       setState(() {
         _currentWeather = weatherData;
-
-        // Debugging output
-        print('Current Weather: $_currentWeather');
-
         _currentWeather?['forecast'] = forecastData['forecast'];
-        _currentWeather?['hourly'] = hourlyData['hour'];
+        _currentWeather?['hourly'] = hourlyData['hour']; // Store hourly data
       });
     } catch (e) {
+      print('Error fetching weather data: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Could not fetch weather data. Please try again later.')),
       );
-    }
-  }
-
-  // New method to get background image
-  String _getBackgroundImage() {
-    if (_currentWeather != null && _currentWeather!['current'] != null) {
-      String condition = _currentWeather!['current']['condition']['text'].toLowerCase();
-      print('Weather Condition: $condition'); // Debugging output
-      return _mapConditionToBackgroundImage(condition);
-    }
-    return 'assets/images/default_background.jpg';
-  }
-
-  String _mapConditionToBackgroundImage(String condition) {
-    switch (condition) {
-      case 'sunny':
-        return 'assets/images/sunny_background.jpg';
-      case 'cloudy':
-        return 'assets/images/cloudy_background.jpg';
-      case 'rain':
-      case 'rainy':
-        return 'assets/images/rainy_background.jpg';
-      case 'snow':
-      case 'snowy':
-        return 'assets/images/snowy_background.jpg';
-      default:
-        return 'assets/images/default_background.jpg';
-    }
-  }
-
-  Widget _buildSunriseSunset() {
-    if (_currentWeather != null && _currentWeather!['forecast'] != null && _currentWeather!['forecast']['forecastday'].isNotEmpty) {
-      final astro = _currentWeather!['forecast']['forecastday'][0]['astro'];
-      final sunrise = astro?['sunrise'] ?? 'N/A';
-      final sunset = astro?['sunset'] ?? 'N/A';
-
-      return Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          _buildWeatherDetail('Sunrise', Icons.wb_sunny, sunrise),
-          _buildWeatherDetail('Sunset', Icons.brightness_3, sunset),
-        ],
-      );
-    } else {
-      return SizedBox.shrink();
-    }
-  }
-
-  Widget _buildNext7DaysForecast() {
-    if (_currentWeather != null && _currentWeather!['forecast'] != null) {
-      final forecastDays = _currentWeather!['forecast']['forecastday'];
-
-      return ListView.builder(
-        shrinkWrap: true,
-        physics: NeverScrollableScrollPhysics(),
-        itemCount: forecastDays.length,
-        itemBuilder: (context, index) {
-          final day = forecastDays[index];
-          return ListTile(
-            title: Text(day['date'], style: TextStyle(color: Colors.white)),
-            leading: Image.network(
-              'http:${day['day']['condition']['icon']}',
-              height: 40,
-              width: 40,
-            ),
-            subtitle: Text(
-              'Max: ${day['day']['maxtemp_c']}°C, Min: ${day['day']['mintemp_c']}°C',
-              style: TextStyle(color: Colors.white),
-            ),
-            trailing: Text(
-              '${day['day']['avgtemp_c']}°C',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-            ),
-          );
-        },
-      );
-    } else {
-      return Center(child: Text('No forecast data available.'));
-    }
-  }
-
-  Widget
-  _buildHourlyForecast() {
-    if (_currentWeather != null && _currentWeather!['hourly'] != null && _currentWeather!['hourly'].isNotEmpty) {
-      final hourlyData = _currentWeather!['hourly'];
-
-      return Container(
-        height: 120,
-        child: ListView.builder(
-          scrollDirection: Axis.horizontal,
-          itemCount: hourlyData.length,
-          itemBuilder: (context, index) {
-            final hour = hourlyData[index];
-            return Container(
-              width: 70,
-              child: Column(
-                children: [
-                  Text(
-                    hour['time'].substring(11, 16),
-                    style: TextStyle(color: Colors.white),
-                  ),
-                  Image.network(
-                    'http:${hour['condition']['icon']}',
-                    height: 40,
-                    width: 40,
-                  ),
-                  Text(
-                    '${hour['temp_c']}°C',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ],
-              ),
-            );
-          },
-        ),
-      );
-    } else {
-      return Center(child: Text('No hourly forecast data available.'));
     }
   }
 
@@ -234,7 +100,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   if (value.isNotEmpty) {
                     var suggestions = await _weatherService.fetchCitySuggestions(value);
                     setState(() {
-                      _citySuggestions = suggestions.cast<Map<String, dynamic>>();
+                      _citySuggestions = (suggestions as List<Map<String, dynamic>>?) ?? [];
                     });
                   } else {
                     setState(() {
@@ -290,10 +156,7 @@ class _HomeScreenState extends State<HomeScreen> {
           SnackBar(content: Text('$_city is already saved.')),
         );
       } else {
-        setState(() {
-          _savedLocations.add(_city);
-        });
-        _saveLocations();
+        _savedLocations.add(_city);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('$_city saved successfully!')),
         );
@@ -303,11 +166,6 @@ class _HomeScreenState extends State<HomeScreen> {
         SnackBar(content: Text('No weather data to save.')),
       );
     }
-  }
-
-  Future<void> _saveLocations() async {
-    final prefs = await SharedPreferences.getInstance();
-    prefs.setStringList('savedLocations', _savedLocations);
   }
 
   void _navigateToSavedLocations() async {
@@ -320,13 +178,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (selectedCity != null) {
       setState(() {
-        _city = selectedCity;
+        _city = selectedCity; // Update the city in HomeScreen
       });
-      _fetchWeather();
+      _fetchWeather(); // Fetch weather for the selected location
     }
   }
 
+  @override
   Widget build(BuildContext context) {
+    String condition = _currentWeather?['current']?['condition']['text'] ?? 'Clear';
+
     return Scaffold(
       backgroundColor: Colors.blueAccent,
       appBar: AppBar(
@@ -336,21 +197,15 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: Icon(Icons.save),
             onPressed: _saveCityWeather,
           ),
-
-          IconButton(
-            icon: Icon(Icons.location_city),
-            onPressed: _navigateToSavedLocations,
-          ),
-
         ],
-        backgroundColor: Colors.blueAccent,
+        backgroundColor: Colors.lightBlueAccent,
       ),
       body: _currentWeather == null
           ? Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
         child: Stack(
           children: [
-            WeatherBackground(condition: _getBackgroundImage()),
+            WeatherBackground(condition: condition),
             Container(
               padding: EdgeInsets.all(20),
               color: Colors.black54,
@@ -403,18 +258,28 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                   SizedBox(height: 20),
-                  _buildSunriseSunset(),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _buildWeatherDetail('Sunrise', Icons.wb_sunny,
+                          _currentWeather?['forecast']?['forecastday']?[0]['astro']?['sunrise'] ?? 'N/A'),
+                      _buildWeatherDetail('Sunset', Icons.brightness_3,
+                          _currentWeather?['forecast']?['forecastday']?[0]['astro']?['sunset'] ?? 'N/A'),
+                    ],
+                  ),
                   SizedBox(height: 20),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _buildWeatherDetail('Humidity', Icons.opacity, _currentWeather?['current']?['humidity'] ?? 'N/A'),
-                      _buildWeatherDetail('Wind (KPH)', Icons.wind_power, _currentWeather?['current']?['wind_kph'] ?? 'N/A'),
+                      _buildWeatherDetail('Humidity', Icons.opacity,
+                          _currentWeather?['current']?['humidity'] ?? 'N/A'),
+                      _buildWeatherDetail('Wind (KPH)', Icons.wind_power,
+                          _currentWeather?['current']?['wind_kph'] ?? 'N/A'),
                     ],
                   ),
                   SizedBox(height: 20),
                   Text(
-                    "Next 24 Hours Weather Forecast",
+                    "Next 24 Hours Weather",
                     style: GoogleFonts.lato(
                       fontSize: 24,
                       color: Colors.white,
@@ -422,7 +287,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                   SizedBox(height: 10),
-                  _build24HourForecast(),
+                  _build24HourForecast(), // New method for 24-hour forecast
                   SizedBox(height: 20),
                   Text(
                     "Next 7 Days Weather Forecast",
@@ -433,7 +298,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                   SizedBox(height: 10),
-                  _buildNext7DaysForecast(),
+                  _build7DayForecast(),
                   SizedBox(height: 45),
                 ],
               ),
@@ -448,37 +313,101 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+
   Widget _build24HourForecast() {
     if (_currentWeather != null && _currentWeather!['hourly'] != null) {
       final hourlyData = _currentWeather!['hourly'];
 
-      return ListView.builder(
-        shrinkWrap: true,
-        physics: NeverScrollableScrollPhysics(),
-        itemCount: hourlyData.length,
-        itemBuilder: (context, index) {
-          final hour = hourlyData[index];
-          return ListTile(
-            title: Text(hour['time'].substring(11, 16), style: TextStyle(color: Colors.white)),
-            leading: Image.network(
-              'http:${hour['condition']['icon']}',
-              height: 40,
-              width: 40,
-            ),
-            subtitle: Text(
-              '${hour['temp_c']}°C',
-              style: TextStyle(color: Colors.white),
-            ),
-            trailing: Text(
-              '${hour['chance_of_rain']}% Rain',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-            ),
-          );
-        },
+      return SizedBox(
+        height: 120,
+        child: ListView.builder(
+          scrollDirection: Axis.horizontal,
+          itemCount: hourlyData.length,
+          itemBuilder: (context, index) {
+            final hour = hourlyData[index];
+            return Container(
+              width: 80,
+              margin: EdgeInsets.symmetric(horizontal: 4),
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.black54,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Display time in HH:MM format
+                  Text(
+                    hour['time'].substring(11, 16), // Extract time
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  ),
+                  // Display weather icon
+                  Image.network(
+                    'http:${hour['condition']['icon']}',
+                    height: 40,
+                    width: 40,
+                  ),
+                  // Display temperature
+                  Text(
+                    '${hour['temp_c']}°C',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  // Display chance of rain
+                  Text(
+                    '${hour['chance_of_rain']}% Rain',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
       );
     } else {
-      return Center(child: Text('No hourly forecast data available.'));
+      return Center(child: Text('No hourly data available.'));
     }
+  }
+
+  Widget _build7DayForecast() {
+    return FutureBuilder<Map<String, dynamic>>(
+      future: _weatherService.fetchForecast(_city),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Center(child: CircularProgressIndicator());
+        } else if (snapshot.hasError) {
+          return Center(child: Text('Error: ${snapshot.error}'));
+        } else if (!snapshot.hasData || snapshot.data == null) {
+          return Center(child: Text('No data available.'));
+        }
+
+        final forecastData = snapshot.data!;
+
+        return ListView.builder(
+          shrinkWrap: true,
+          physics: NeverScrollableScrollPhysics(),
+          itemCount: forecastData['forecast']['forecastday'].length,
+          itemBuilder: (context, index) {
+            final day = forecastData['forecast']['forecastday'][index];
+            return ListTile(
+              title: Text(day['date']),
+              leading: Image.network(
+                'http:${day['day']['condition']['icon']}',
+                height: 40,
+                width: 40,
+              ),
+              subtitle: Text(
+                'Max: ${day['day']['maxtemp_c']}°C, Min: ${day['day']['mintemp_c']}°C',
+                style: TextStyle(color: Colors.white),
+              ),
+              trailing: Text(
+                '${day['day']['avgtemp_c']}°C',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   Widget _buildWeatherDetail(String label, IconData icon, dynamic value) {
