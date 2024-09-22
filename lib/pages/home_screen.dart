@@ -4,7 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:weather/services/weather_service.dart';
 import 'package:weather/pages/saved_locations_screen.dart';
-import 'package:weather/services/weather_background.dart';
+import 'package:intl/intl.dart';
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -15,9 +16,10 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final WeatherService _weatherService = WeatherService();
   String _city = 'London';
-  List<Map<String, dynamic>> _citySuggestions = [];
   Map<String, dynamic>? _currentWeather;
+  bool _isLoading = false;
   List<String> _savedLocations = [];
+  String _backgroundImage = 'assets/images/default_background.jpg'; // Background image variable
 
   @override
   void initState() {
@@ -26,11 +28,18 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _getCurrentLocation() async {
+    setState(() {
+      _isLoading = true;
+    });
+
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Location services are disabled.')),
       );
+      setState(() {
+        _isLoading = false;
+      });
       return;
     }
 
@@ -41,6 +50,9 @@ class _HomeScreenState extends State<HomeScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Location permission denied.')),
         );
+        setState(() {
+          _isLoading = false;
+        });
         return;
       }
     }
@@ -49,6 +61,9 @@ class _HomeScreenState extends State<HomeScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Location permissions are permanently denied.')),
       );
+      setState(() {
+        _isLoading = false;
+      });
       return;
     }
 
@@ -58,12 +73,18 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         _currentWeather = weatherData;
         _city = weatherData['location']['name'] ?? 'Unknown';
+        String condition = _currentWeather?['current']?['condition']['text'] ?? 'Clear';
+        _backgroundImage = _getBackgroundImage(condition); // Set background image
+        _isLoading = false;
       });
     } catch (e) {
       print('Error fetching location: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Could not fetch location. Please try again later.')),
       );
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -71,12 +92,14 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final weatherData = await _weatherService.fetchCurrentWeather(_city);
       final forecastData = await _weatherService.fetchForecast(_city);
-      final hourlyData = await _weatherService.fetchHourlyForecast(_city); // Fetch hourly data
+      final hourlyData = await _weatherService.fetchHourlyForecast(_city);
 
       setState(() {
         _currentWeather = weatherData;
         _currentWeather?['forecast'] = forecastData['forecast'];
-        _currentWeather?['hourly'] = hourlyData['hour']; // Store hourly data
+        _currentWeather?['hourly'] = hourlyData['hour'];
+        String condition = _currentWeather?['current']?['condition']['text'] ?? 'Clear';
+        _backgroundImage = _getBackgroundImage(condition); // Update background image
       });
     } catch (e) {
       print('Error fetching weather data: $e');
@@ -84,69 +107,6 @@ class _HomeScreenState extends State<HomeScreen> {
         SnackBar(content: Text('Could not fetch weather data. Please try again later.')),
       );
     }
-  }
-
-  void _showCitySelectionDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text("Enter City Name"),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                onChanged: (value) async {
-                  if (value.isNotEmpty) {
-                    var suggestions = await _weatherService.fetchCitySuggestions(value);
-                    setState(() {
-                      _citySuggestions = (suggestions as List<Map<String, dynamic>>?) ?? [];
-                    });
-                  } else {
-                    setState(() {
-                      _citySuggestions = [];
-                    });
-                  }
-                },
-                decoration: InputDecoration(
-                  border: OutlineInputBorder(),
-                  labelText: "City",
-                ),
-              ),
-              SizedBox(height: 10),
-              _citySuggestions.isNotEmpty
-                  ? Container(
-                height: 200,
-                child: ListView.builder(
-                  itemCount: _citySuggestions.length,
-                  itemBuilder: (context, index) {
-                    return ListTile(
-                      title: Text(_citySuggestions[index]['name']),
-                      onTap: () {
-                        setState(() {
-                          _city = _citySuggestions[index]['name'];
-                        });
-                        Navigator.pop(context);
-                        _fetchWeather();
-                      },
-                    );
-                  },
-                ),
-              )
-                  : SizedBox.shrink(),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: Text("Cancel"),
-            ),
-          ],
-        );
-      },
-    );
   }
 
   void _saveCityWeather() {
@@ -178,9 +138,25 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (selectedCity != null) {
       setState(() {
-        _city = selectedCity; // Update the city in HomeScreen
+        _city = selectedCity;
       });
-      _fetchWeather(); // Fetch weather for the selected location
+      _fetchWeather();
+    }
+  }
+
+  String _getBackgroundImage(String condition) {
+    switch (condition.toLowerCase()) {
+      case 'sunny':
+        return 'assets/images/sunny_background.jpg';
+      case 'cloudy':
+        return 'assets/images/cloudy_background.jpg';
+      case 'rain':
+      case 'rainy':
+        return 'assets/images/rainy_background.jpg';
+      case 'snow':
+        return 'assets/images/snowy_background.jpg';
+      default:
+        return 'assets/images/default_background.jpg';
     }
   }
 
@@ -189,7 +165,6 @@ class _HomeScreenState extends State<HomeScreen> {
     String condition = _currentWeather?['current']?['condition']['text'] ?? 'Clear';
 
     return Scaffold(
-      backgroundColor: Colors.blueAccent,
       appBar: AppBar(
         title: Text('Weather App'),
         actions: [
@@ -200,12 +175,21 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
         backgroundColor: Colors.lightBlueAccent,
       ),
-      body: _currentWeather == null
+      body: _isLoading
           ? Center(child: CircularProgressIndicator())
+          : _currentWeather == null
+          ? Center(child: Text('No weather data available.'))
           : SingleChildScrollView(
         child: Stack(
           children: [
-            WeatherBackground(condition: condition),
+            Container(
+              decoration: BoxDecoration(
+                image: DecorationImage(
+                  image: AssetImage(_backgroundImage), // Use the updated background image
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
             Container(
               padding: EdgeInsets.all(20),
               color: Colors.black54,
@@ -214,7 +198,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   SizedBox(height: 10),
                   InkWell(
-                    onTap: _showCitySelectionDialog,
                     child: Text(
                       _city,
                       style: GoogleFonts.lato(
@@ -287,7 +270,72 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                   SizedBox(height: 10),
-                  _build24HourForecast(), // New method for 24-hour forecast
+                  Container(
+                    height: 120, // Fixed height to prevent overflow
+                    child: FutureBuilder<Map<String, dynamic>>(
+                      future: _weatherService.fetchHourlyForecast(_city),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return Center(child: CircularProgressIndicator());
+                        } else if (snapshot.hasError) {
+                          return Center(child: Text('Error: ${snapshot.error}'));
+                        } else if (!snapshot.hasData || snapshot.data == null) {
+                          return Center(child: Text('No data available.'));
+                        }
+
+                        final hourlyData = snapshot.data!;
+                        final hours = hourlyData['forecast']['forecastday'][0]['hour'];
+
+                        if (hours == null || hours.isEmpty) {
+                          return Center(child: Text('No hourly data available.'));
+                        }
+
+                        return ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: hours.length,
+                          itemBuilder: (context, index) {
+                            final hour = hours[index];
+                            final dateTime = DateTime.parse(hour['time']); // Parse the time string
+                            final formattedTime = DateFormat.jm().format(dateTime); // Format to a readable time
+                            return Container(
+                              width: 100, // Set width for each hour
+                              padding: EdgeInsets.all(8.0), // Adjust padding as needed
+                              child: Card(
+                                color: Colors.black54,
+                                child: SingleChildScrollView( // Add SingleChildScrollView here
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Image.network(
+                                        'http:${hour['condition']['icon']}',
+                                        height: 40,
+                                        width: 40,
+                                      ),
+                                      SizedBox(height: 4), // Reduce height to prevent overflow
+                                      Text(
+                                        '${hour['temp_c']}°C',
+                                        style: TextStyle(color: Colors.white),
+                                      ),
+                                      SizedBox(height: 2), // Reduce height to prevent overflow
+                                      Text(
+                                        '${hour['chance_of_rain']}% chance of rain',
+                                        style: TextStyle(color: Colors.white),
+                                      ),
+                                      SizedBox(height: 2),
+                                      Text(
+                                        formattedTime,
+                                        style: TextStyle(color: Colors.white , fontSize: 12),
+                                      )
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ),
                   SizedBox(height: 20),
                   Text(
                     "Next 7 Days Weather Forecast",
@@ -314,148 +362,49 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _build24HourForecast() {
-    if (_currentWeather != null && _currentWeather!['hourly'] != null) {
-      final hourlyData = _currentWeather!['hourly'];
-
-      return SizedBox(
-        height: 120,
-        child: ListView.builder(
-          scrollDirection: Axis.horizontal,
-          itemCount: hourlyData.length,
-          itemBuilder: (context, index) {
-            final hour = hourlyData[index];
-            return Container(
-              width: 80,
-              margin: EdgeInsets.symmetric(horizontal: 4),
-              padding: EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.black54,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // Display time in HH:MM format
-                  Text(
-                    hour['time'].substring(11, 16), // Extract time
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                  ),
-                  // Display weather icon
-                  Image.network(
-                    'http:${hour['condition']['icon']}',
-                    height: 40,
-                    width: 40,
-                  ),
-                  // Display temperature
-                  Text(
-                    '${hour['temp_c']}°C',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                  // Display chance of rain
-                  Text(
-                    '${hour['chance_of_rain']}% Rain',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ],
-              ),
-            );
-          },
-        ),
-      );
-    } else {
-      return Center(child: Text('No hourly data available.'));
-    }
-  }
-
   Widget _build7DayForecast() {
-    return FutureBuilder<Map<String, dynamic>>(
-      future: _weatherService.fetchForecast(_city),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center(child: CircularProgressIndicator());
-        } else if (snapshot.hasError) {
-          return Center(child: Text('Error: ${snapshot.error}'));
-        } else if (!snapshot.hasData || snapshot.data == null) {
-          return Center(child: Text('No data available.'));
-        }
+    if (_currentWeather != null && _currentWeather!['forecast'] != null) {
+      final forecastData = _currentWeather!['forecast']['forecastday'];
 
-        final forecastData = snapshot.data!;
-
-        return ListView.builder(
-          shrinkWrap: true,
-          physics: NeverScrollableScrollPhysics(),
-          itemCount: forecastData['forecast']['forecastday'].length,
-          itemBuilder: (context, index) {
-            final day = forecastData['forecast']['forecastday'][index];
-            return ListTile(
-              title: Text(day['date']),
+      return Column(
+        children: List.generate(forecastData.length, (index) {
+          final day = forecastData[index];
+          return Card(
+            margin: EdgeInsets.symmetric(vertical: 5),
+            child: ListTile(
+              title: Text(
+                DateFormat('EEEE').format(DateTime.parse(day['date'])),
+                style: TextStyle(color: Colors.black),
+              ),
+              subtitle: Text(
+                '${day['day']['condition']['text']} - Max: ${day['day']['maxtemp_c']}°C, Min: ${day['day']['mintemp_c']}°C',
+              ),
               leading: Image.network(
                 'http:${day['day']['condition']['icon']}',
                 height: 40,
                 width: 40,
               ),
-              subtitle: Text(
-                'Max: ${day['day']['maxtemp_c']}°C, Min: ${day['day']['mintemp_c']}°C',
-                style: TextStyle(color: Colors.white),
-              ),
-              trailing: Text(
-                '${day['day']['avgtemp_c']}°C',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-              ),
-            );
-          },
-        );
-      },
-    );
+            ),
+          );
+        }),
+      );
+    }
+    return Center(child: Text('No 7-day forecast available.'));
   }
 
-  Widget _buildWeatherDetail(String label, IconData icon, dynamic value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      child: ClipRRect(
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 3, sigmaY: 3),
-          child: Container(
-            padding: EdgeInsets.all(5),
-            width: 110,
-            height: 110,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(10),
-              gradient: LinearGradient(
-                begin: AlignmentDirectional.topStart,
-                end: AlignmentDirectional.bottomEnd,
-                colors: [
-                  Color(0xFF1A2344).withOpacity(0.5),
-                  Color(0xFF1A2344).withOpacity(0.2),
-                ],
-              ),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(icon, color: Colors.white),
-                SizedBox(height: 8),
-                Text(
-                  label,
-                  style: GoogleFonts.lato(
-                    color: Colors.white,
-                    fontSize: 14,
-                  ),
-                ),
-                Text(
-                  value.toString(),
-                  style: GoogleFonts.lato(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ),
+  Widget _buildWeatherDetail(String title, IconData icon, dynamic value) {
+    return Row(
+      children: [
+        Icon(icon, color: Colors.white),
+        SizedBox(width: 8),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, style: TextStyle(color: Colors.white)),
+            Text(value.toString(), style: TextStyle(color: Colors.white)), // Ensure value is a string
+          ],
         ),
-      ),
+      ],
     );
   }
 }

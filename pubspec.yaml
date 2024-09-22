@@ -16,12 +16,12 @@ dependencies:
   flutter_typeahead: ^5.2.0
   cupertino_icons: ^1.0.8
   shared_preferences: ^2.0.12
+  intl: ^0.17.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_typeahead: ^5.2.0
   flutter_launcher_icons: ^0.13.1
-  shared_preferences: ^2.0.12
+
 flutter_icons:
   android: true
   ios: true
@@ -35,11 +35,11 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/
-#    - assets/images/sunny_background.jpg
-#    - assets/images/cloudy_background.jpg
-#    - assets/images/rainy_background.jpg
-#    - assets/images/snowy_background.jpg
-#    - assets/images/default_background.jpg
+    - assets/images/sunny_background.jpg
+    - assets/images/cloudy_background.jpg
+    - assets/images/rainy_background.jpg
+    - assets/images/snowy_background.jpg
+    - assets/images/default_background.jpg
 
 
 

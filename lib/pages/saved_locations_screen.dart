@@ -18,12 +18,15 @@ class _SavedLocationsScreenState extends State<SavedLocationsScreen> {
   late List<String> _savedLocations;
   Map<String, Map<String, dynamic>?> _weatherData = {};
   final WeatherService _weatherService = WeatherService();
-  List<String> _filteredSuggestions = [];
 
   List<String> _countries = [];
   Map<String, List<String>> _countryCities = {};
   String? _selectedCountry;
   String? _selectedCity;
+  List<String> _filteredCountries = [];
+  List<String> _filteredCities = [];
+  TextEditingController _countryController = TextEditingController();
+  TextEditingController _cityController = TextEditingController();
 
   @override
   void initState() {
@@ -86,6 +89,7 @@ class _SavedLocationsScreenState extends State<SavedLocationsScreen> {
       await _saveLocations();
       _fetchWeatherData(location);
       _selectedCity = null; // Reset selected city
+      _cityController.clear(); // Clear city input
     }
   }
 
@@ -150,6 +154,24 @@ class _SavedLocationsScreenState extends State<SavedLocationsScreen> {
     }
   }
 
+  void _filterCountries(String query) {
+    setState(() {
+      _filteredCountries = _countries
+          .where((country) => country.toLowerCase().startsWith(query.toLowerCase()))
+          .toList();
+    });
+  }
+
+  void _filterCities(String query) {
+    if (_selectedCountry != null) {
+      setState(() {
+        _filteredCities = _countryCities[_selectedCountry]!
+            .where((city) => city.toLowerCase().startsWith(query.toLowerCase()))
+            .toList();
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -163,45 +185,66 @@ class _SavedLocationsScreenState extends State<SavedLocationsScreen> {
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 children: [
-                  // Country selection dropdown
-                  DropdownButton<String>(
-                    isExpanded: true,
-                    value: _selectedCountry,
-                    hint: Text('Select Country'),
-                    onChanged: (newValue) {
-                      setState(() {
-                        _selectedCountry = newValue;
-                        _selectedCity = null; // Reset city selection
-                        _filteredSuggestions.clear(); // Clear suggestions on country change
-                      });
-                    },
-                    items: _countries.map((country) {
-                      return DropdownMenuItem(
-                        child: Text(country),
-                        value: country,
-                      );
-                    }).toList(),
-                  ),
-
-                  // City selection dropdown
-                  if (_selectedCountry != null) ...[
-                    DropdownButton<String>(
-                      isExpanded: true,
-                      value: _selectedCity,
-                      hint: Text('Select City'),
-                      onChanged: (newValue) {
-                        setState(() {
-                          _selectedCity = newValue;
-                        });
-                      },
-                      items: _countryCities[_selectedCountry]
-                          ?.map((city) => DropdownMenuItem(
-                        child: Text(city),
-                        value: city,
-                      ))
-                          .toList(),
+                  // Country selection input
+                  TextField(
+                    controller: _countryController,
+                    decoration: InputDecoration(
+                      labelText: 'Select Country',
+                      border: OutlineInputBorder(),
                     ),
-
+                    onChanged: _filterCountries,
+                  ),
+                  // Country suggestions
+                  if (_filteredCountries.isNotEmpty)
+                    ListView.builder(
+                      shrinkWrap: true,
+                      physics: NeverScrollableScrollPhysics(),
+                      itemCount: _filteredCountries.length,
+                      itemBuilder: (context, index) {
+                        return ListTile(
+                          title: Text(_filteredCountries[index]),
+                          onTap: () {
+                            setState(() {
+                              _selectedCountry = _filteredCountries[index];
+                              _countryController.text = _selectedCountry!; // Set selected country
+                              _selectedCity = null; // Reset city selection
+                              _cityController.clear(); // Clear city input
+                              _filteredCountries.clear(); // Clear suggestions
+                            });
+                          },
+                        );
+                      },
+                    ),
+                  SizedBox(height: 16), // Spacing between fields
+                  // City selection input
+                  if (_selectedCountry != null) ...[
+                    TextField(
+                      controller: _cityController,
+                      decoration: InputDecoration(
+                        labelText: 'Select City',
+                        border: OutlineInputBorder(),
+                      ),
+                      onChanged: _filterCities,
+                    ),
+                    // City suggestions
+                    if (_filteredCities.isNotEmpty)
+                      ListView.builder(
+                        shrinkWrap: true,
+                        physics: NeverScrollableScrollPhysics(),
+                        itemCount: _filteredCities.length,
+                        itemBuilder: (context, index) {
+                          return ListTile(
+                            title: Text(_filteredCities[index]),
+                            onTap: () {
+                              setState(() {
+                                _selectedCity = _filteredCities[index];
+                                _cityController.text = _selectedCity!; // Set selected city
+                                _filteredCities.clear(); // Clear suggestions
+                              });
+                            },
+                          );
+                        },
+                      ),
                     // Button to add the selected city with styling
                     ElevatedButton(
                       onPressed: () {
@@ -211,7 +254,7 @@ class _SavedLocationsScreenState extends State<SavedLocationsScreen> {
                       },
                       style: ElevatedButton.styleFrom(
                         padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                        backgroundColor: Colors.blue, // Changed from primary to backgroundColor
+                        backgroundColor: Colors.blue,
                         foregroundColor: Colors.white,
                         textStyle: GoogleFonts.lato(fontSize: 18, fontWeight: FontWeight.bold),
                       ),
@@ -256,9 +299,10 @@ class _SavedLocationsScreenState extends State<SavedLocationsScreen> {
                         Text(
                           city,
                           style: GoogleFonts.lato(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.blue[900]),
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue[900],
+                          ),
                         ),
                         SizedBox(height: 10),
                         if (weather != null) ...[
@@ -271,35 +315,42 @@ class _SavedLocationsScreenState extends State<SavedLocationsScreen> {
                           Text(
                             'Temperature: ${weather['temperature']}°C',
                             style: GoogleFonts.lato(
-                                fontSize: 16, color: Colors.blue[900]),
+                              fontSize: 16,
+                              color: Colors.blue[900],
+                            ),
                           ),
                           Text(
                             'Condition: ${weather['condition']}',
                             style: GoogleFonts.lato(
-                                fontSize: 16, color: Colors.blue[900]),
+                              fontSize: 16,
+                              color: Colors.blue[900],
+                            ),
                           ),
                           Text(
                             'Humidity: ${weather['humidity']}%',
                             style: GoogleFonts.lato(
-                                fontSize: 16, color: Colors.blue[900]),
+                              fontSize: 16,
+                              color: Colors.blue[900],
+                            ),
                           ),
                           Text(
                             'Last Updated: ${weather['time']}',
                             style: GoogleFonts.lato(
-                                fontSize: 12,
-                                fontStyle: FontStyle.italic,
-                                color: Colors.blue[700]),
-                          ),
-                        ] else
-                          ...[
-                            Text(
-                              'Loading ...',
-                              style: GoogleFonts.lato(
-                                  fontSize: 16,
-                                  fontStyle: FontStyle.italic,
-                                  color: Colors.red),
+                              fontSize: 12,
+                              fontStyle: FontStyle.italic,
+                              color: Colors.blue[700],
                             ),
-                          ],
+                          ),
+                        ] else ...[
+                          Text(
+                            'Loading ...',
+                            style: GoogleFonts.lato(
+                              fontSize: 16,
+                              fontStyle: FontStyle.italic,
+                              color: Colors.red,
+                            ),
+                          ),
+                        ],
                         Align(
                           alignment: Alignment.centerRight,
                           child: IconButton(

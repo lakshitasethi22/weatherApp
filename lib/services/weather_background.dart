@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 class WeatherBackground extends StatelessWidget {
   final String condition;
 
-  const WeatherBackground({super.key, required this.condition});
+  const WeatherBackground({Key? key, required this.condition}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -11,21 +11,20 @@ class WeatherBackground extends StatelessWidget {
 
     switch (condition.toLowerCase()) {
       case 'sunny':
-      case 'clear':
-        imagePath = 'assets/images/sunny.jpg'; // Add your sunny image path
-        break;
-      case 'rain':
-      case 'drizzle':
-        imagePath = 'assets/images/rainy.jpg'; // Add your rainy image path
+        imagePath = 'assets/images/sunny.jpg';
         break;
       case 'cloudy':
-        imagePath = 'assets/images/cloudy.jpg'; // Add your cloudy image path
+        imagePath = 'assets/images/cloudy.jpg';
+        break;
+      case 'rain':
+      case 'rainy':
+        imagePath = 'assets/images/rainy.jpg';
         break;
       case 'snow':
-        imagePath = 'assets/images/snowy.jpg'; // Add your snowy image path
+        imagePath = 'assets/images/snowy.jpg';
         break;
       default:
-        imagePath = 'assets/images/default.jpg'; // Default background
+        imagePath = 'assets/images/default.jpg'; // Fallback image
     }
 
     return Container(
